@@ -3,7 +3,7 @@ class Camion {
     private String patente;
     private float capacidad_kg;
     private boolean esta_refrigerado;
-
+    
 
     public Camion(int id_camion, String patente, float capacidad_kg, boolean esta_refrigerado) {
         this.id_camion = id_camion;

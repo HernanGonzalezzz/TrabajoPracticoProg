@@ -2,7 +2,10 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class Servicios { 
     //Completar con las estructuras y métodos privados que se requieran. 
@@ -118,5 +121,83 @@ public class Servicios {
                 "Paquetes=" + paquetes +
                 '}';
     
+    }
+
+
+    public Map<Camion, List<Paquete>> cargarCamiones(){
+        Map<Camion, List<Paquete>> camionConPaquetes = new HashMap<>();
+        Map<Camion, List<Paquete>> caminoCamionConPaquetes = new HashMap<>();
+        for(Camion c: camiones){ // Instancio la lista de los camiones 
+            camionConPaquetes.put(c, new ArrayList<>());
+            caminoCamionConPaquetes.put(c, new ArrayList<>());
+        }
+        float[] pesoMaxCamiones = new float[camiones.size()];
+        float[] pesoActualCamiones = new float[camiones.size()];
+        ArrayList<Paquete> copiaPaquetes = new ArrayList<>(this.paquetes);
+        float pesoRestante = getPesoPaquetes(copiaPaquetes);
+        float pesoActualRestante = getPesoPaquetes(copiaPaquetes);
+
+        asignacionPaquetes(copiaPaquetes, camionConPaquetes, pesoRestante, caminoCamionConPaquetes, pesoActualRestante, pesoMaxCamiones, pesoActualCamiones);
+
+
+
+        return camionConPaquetes;
+    }
+
+
+    private void asignacionPaquetes(ArrayList<Paquete> copiaPaquetes, Map<Camion, List<Paquete>> camionConPaquetes, float pesoRestante, 
+        Map<Camion, List<Paquete>> caminoCamionConPaquetes, float pesoActualRestante, float[] pesoMaxCamiones,  float[] pesoActualCamiones){
+        
+        if(!puedoAsignarPaquetes(pesoMaxCamiones, pesoActualCamiones, copiaPaquetes)){
+            if(pesoActualRestante < pesoRestante){
+                for(Camion c : camiones){
+                    camionConPaquetes.replace(c, new ArrayList<>(caminoCamionConPaquetes.get(c)));
+                }
+            }
+        } else {
+
+            for(Camion c : camiones){
+                Paquete p = copiaPaquetes.get(0);
+                if()
+                if(p.isContiene_alimentos() ){
+                    if (c.isEsta_refrigerado()){
+                        
+                        caminoCamionConPaquetes.get(c).add(p);
+                    }
+                    
+                } else {
+
+                }
+
+            }
+
+
+        }
+
+
+
+
+    }   
+
+    private boolean puedoAsignarPaquetes(float[] pesoMaxCamiones, float[] pesoActualCamiones, ArrayList<Paquete> copiaPaquetes){
+
+        for(Paquete p : copiaPaquetes){
+            for(int i = 0; i< pesoActualCamiones.length ; i++){
+                if((pesoActualCamiones[i]+p.getPeso_kg() < pesoMaxCamiones[i]) ){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+    private float getPesoPaquetes(ArrayList<Paquete> copiaPaquetes){
+        float pesoTotal = 0;
+        for(Paquete p : copiaPaquetes){
+            pesoTotal += p.getPeso_kg();
+        }
+        return pesoTotal;
     }
 } 
