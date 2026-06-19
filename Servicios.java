@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -28,6 +29,7 @@ public class Servicios {
 
         // Cargar los camiones desde el archivo CSV
         try (BufferedReader br = new BufferedReader(new FileReader(pathCamiones))) {
+            br.readLine(); // saltear la línea del total
             String line;
             while ((line = br.readLine()) != null) {
                 String[] values = line.split(";");
@@ -48,6 +50,7 @@ public class Servicios {
 
         // Cargar los paquetes desde el archivo CSV
         try (BufferedReader br = new BufferedReader(new FileReader(pathPaquetes))) {
+            br.readLine(); // saltear la línea del total
             String line;
             while ((line = br.readLine()) != null) {
                 String[] values = line.split(";");
@@ -104,6 +107,8 @@ public class Servicios {
  
     /* 
      * Expresar la complejidad temporal del servicio 3. 
+     * La complejidad temporal es O(n), siendo n la cantidad de paquetes,
+     * ya que en el peor caso se recorren todos para encontrar los del rango.
      */ 
     public List<Paquete> servicio3(int urgenciaMinima, int urgenciaMaxima) {
         List<Paquete> resultado = new ArrayList<>();
@@ -124,80 +129,201 @@ public class Servicios {
     }
 
 
-    public Map<Camion, List<Paquete>> cargarCamiones(){
+/*
+<<Breve explicación de la estrategia de resolución>>
+La estrategia fue recorrer los paquetes y guardarlos en los camiones, las distintas ramas del arbol exploran las 
+combinaciones de los camiones con distintos paquetes
+La decicion fue utilizar contenedores para guardar el camino por el cual pasa el backtraking
+- camionConPaquetes almacena el resultado final y/o la mejor solucion
+- caminoDePaquetes se guarda el recorrido del backtraking para cuando estemos en el caso base se comparan ambas soluciones
+- pesoActualCamion se guardan los pesos de los camiones que se van modificando en el camino del backtraking
+
+El CASO BASE que consideramos fue cuando ya no tengo mas paquetes para asignar a un camion
+Y el metodo de PODA fue que si el camino actual no mejora la mejor solucion corta el camino en cuestion
+
+*/
+    public Map<Camion, List<Paquete>> backtraking(){
         Map<Camion, List<Paquete>> camionConPaquetes = new HashMap<>();
-        Map<Camion, List<Paquete>> caminoCamionConPaquetes = new HashMap<>();
-        for(Camion c: camiones){ // Instancio la lista de los camiones 
+        Map<Camion, List<Paquete>> caminoDePaquetes = new HashMap<>();
+        Map<Camion, Float> pesoActualCamion = new HashMap<>();
+        for(Camion c :  camiones){
             camionConPaquetes.put(c, new ArrayList<>());
-            caminoCamionConPaquetes.put(c, new ArrayList<>());
+            caminoDePaquetes.put(c, new ArrayList<>());
+            pesoActualCamion.put(c, 0f);
         }
-        float[] pesoMaxCamiones = new float[camiones.size()];
-        float[] pesoActualCamiones = new float[camiones.size()];
         ArrayList<Paquete> copiaPaquetes = new ArrayList<>(this.paquetes);
-        float pesoRestante = getPesoPaquetes(copiaPaquetes);
-        float pesoActualRestante = getPesoPaquetes(copiaPaquetes);
+        float[] pesoRestante = {getPesoPaquetes(copiaPaquetes)};
+        float[] pesoSinAsignarActual = {0f};
 
-        asignacionPaquetes(copiaPaquetes, camionConPaquetes, pesoRestante, caminoCamionConPaquetes, pesoActualRestante, pesoMaxCamiones, pesoActualCamiones);
+        int[] estados = {0};
+        
+        System.out.println("Backtraking:");
+        System.out.println("Peso Entrada:" + pesoRestante[0]);
+        
+        asignacionPaquetes(copiaPaquetes, 0, pesoRestante, pesoSinAsignarActual, camionConPaquetes, caminoDePaquetes, pesoActualCamion, estados);
 
-
+        System.out.println("Solución obtenida:" + camionConPaquetes.toString());
+        System.out.println("Peso no asignado:" + pesoRestante[0]);
+        System.out.println("Estados generados:" + estados[0]);
 
         return camionConPaquetes;
     }
 
 
-    private void asignacionPaquetes(ArrayList<Paquete> copiaPaquetes, Map<Camion, List<Paquete>> camionConPaquetes, float pesoRestante, 
-        Map<Camion, List<Paquete>> caminoCamionConPaquetes, float pesoActualRestante, float[] pesoMaxCamiones,  float[] pesoActualCamiones){
-        
-        if(!puedoAsignarPaquetes(pesoMaxCamiones, pesoActualCamiones, copiaPaquetes)){
-            if(pesoActualRestante < pesoRestante){
-                for(Camion c : camiones){
-                    camionConPaquetes.replace(c, new ArrayList<>(caminoCamionConPaquetes.get(c)));
-                }
-            }
-        } else {
+    private void asignacionPaquetes(ArrayList<Paquete> copiaPaquetes,  int puntero, float[] pesoRestante, float[] pesoSinAsignarActual, 
+        Map<Camion, List<Paquete>> camionesConPaquetes, Map<Camion, List<Paquete>> caminoDePaquetes, Map<Camion, Float> pesoActualCamion, int[] estados){
+        estados[0] += 1;
+          
+        //PODA
+        if (pesoSinAsignarActual[0] >= pesoRestante[0]) return;
 
+        //Caso Base
+        if(puntero == copiaPaquetes.size()){
+            pesoRestante[0] = pesoSinAsignarActual[0];       // nuevo mejor
+            // copiar caminoDePaquetes → camionesConPaquetes
             for(Camion c : camiones){
-                Paquete p = copiaPaquetes.get(0);
-                if()
-                if(p.isContiene_alimentos() ){
-                    if (c.isEsta_refrigerado()){
-                        
-                        caminoCamionConPaquetes.get(c).add(p);
-                    }
-                    
-                } else {
-
-                }
-
+                camionesConPaquetes.put(c, new ArrayList<>(caminoDePaquetes.get(c)));
             }
+            return;
+        }
+            
+        Paquete p = copiaPaquetes.get(puntero);
 
+        for(Camion c: camiones){
+            if (puedeAsignar(p, c, pesoActualCamion.get(c))) {
+                pesoActualCamion.put(c, pesoActualCamion.get(c) + p.getPeso_kg());
+                caminoDePaquetes.get(c).add(p);
 
+                asignacionPaquetes(copiaPaquetes, puntero + 1,pesoRestante, pesoSinAsignarActual,
+                    camionesConPaquetes, caminoDePaquetes,pesoActualCamion, estados);
+
+                caminoDePaquetes.get(c).remove(p);
+                pesoActualCamion.put(c, pesoActualCamion.get(c) - p.getPeso_kg());
+            }
         }
 
-
-
-
+        pesoSinAsignarActual[0] += p.getPeso_kg();
+        asignacionPaquetes(copiaPaquetes, puntero + 1, pesoRestante, pesoSinAsignarActual, camionesConPaquetes, 
+            caminoDePaquetes, pesoActualCamion, estados);
+        pesoSinAsignarActual[0] -= p.getPeso_kg(); 
+        
     }   
 
-    private boolean puedoAsignarPaquetes(float[] pesoMaxCamiones, float[] pesoActualCamiones, ArrayList<Paquete> copiaPaquetes){
-
-        for(Paquete p : copiaPaquetes){
-            for(int i = 0; i< pesoActualCamiones.length ; i++){
-                if((pesoActualCamiones[i]+p.getPeso_kg() < pesoMaxCamiones[i]) ){
-                    return true;
-                }
+    //Evaluamos si el camion es apto para cargar el paquete
+    private boolean puedeAsignar(Paquete p, Camion c, float pesoActual){
+        if(p.isContiene_alimentos()){
+            if(c.isEsta_refrigerado() && pesoActual + p.getPeso_kg() <= c.getCapacidad_kg()){
+                return true;
+            }
+        } else {
+            if(pesoActual + p.getPeso_kg() <= c.getCapacidad_kg()){
+                return true;
             }
         }
-
-        return false;
+    return false;
     }
 
-
+    //Retornamos la suma de los kg de paquetes que recibimos como parametro
     private float getPesoPaquetes(ArrayList<Paquete> copiaPaquetes){
         float pesoTotal = 0;
         for(Paquete p : copiaPaquetes){
             pesoTotal += p.getPeso_kg();
         }
         return pesoTotal;
+    }
+
+
+
+    /*
+    <<Breve explicación de la estrategia de resolución>>
+    La estrategia a utilizar fue ordenar los camiones, poniendo primero los no refrigerados
+    Y con respecto a los paquetes, los ordenamos por peso, poniendo los pesados por delante
+
+    Iteramos por cada camion y lo llenamos priorizando los paquetes mas pesados primero
+
+    */
+    public Map<Camion, List<Paquete>> greedy(){
+        Map<Camion, List<Paquete>> camionesConPaquete = new HashMap<Camion, List<Paquete>>();
+        ArrayList<Camion> camionesOrdenados = ordenarCamiones(camiones);
+        ArrayList<Paquete> paquetesOrdenados = ordenarPaquetes(paquetes);
+        int[] candidatos = {0};
+        
+        for(Camion c: camionesOrdenados){
+            List<Paquete> cargaCamion = new ArrayList<>();
+            
+            cargarCamion(c, paquetesOrdenados, cargaCamion, candidatos);
+            camionesConPaquete.put(c, cargaCamion);
+        }
+
+        System.out.println("Greedy:");
+        System.out.println("Solución obtenida: " + camionesConPaquete);
+        float pesoNoAsignado = 0;
+        for(Paquete p : paquetesOrdenados) pesoNoAsignado += p.getPeso_kg();
+        System.out.println("Peso no asignado: " + pesoNoAsignado + " kg.");
+        System.out.println("Candidatos considerados: " + candidatos[0]);
+
+        return camionesConPaquete;
+    }
+
+
+    private void cargarCamion(Camion c, ArrayList<Paquete> paquetesOrdenado, List<Paquete> cargaCamion, int[] candidatos){
+
+        float pesoCamion = 0;
+
+        Iterator<Paquete> it = paquetesOrdenado.iterator();
+        while(it.hasNext()){
+            if(pesoCamion >= c.getCapacidad_kg()) return;
+            Paquete p = it.next();
+            candidatos[0] += 1;
+            if(puedeAsignar(p, c, pesoCamion)){
+                pesoCamion +=p.getPeso_kg();
+                cargaCamion.add(p);
+                it.remove();
+            }
+        }
+    }
+
+    // Vamos a poner los camiones que no esten refrigerados adelante
+    private ArrayList<Camion> ordenarCamiones(ArrayList<Camion> camiones){
+        ArrayList<Camion> camionesOrdenados = new ArrayList<>();
+
+        for(Camion c : camiones){
+            if(camionesOrdenados.isEmpty()){
+                camionesOrdenados.add(c);
+            } else {
+                if(c.isEsta_refrigerado()){ // refrigerados al final
+                    camionesOrdenados.add(c);
+                } else { // comunes al principio
+                    camionesOrdenados.add(0, c);
+                }
+            }
+        }
+        return camionesOrdenados;
+    }
+
+
+    // Vamos a ordenar los paquetes poniendo los mas pesados al principio
+    private ArrayList<Paquete> ordenarPaquetes(ArrayList<Paquete> paquetes){
+        ArrayList<Paquete> paquetesOrdenados = new ArrayList<>();
+
+        for(Paquete p : paquetes){
+            if(paquetesOrdenados.isEmpty()){
+                paquetesOrdenados.add(p);
+            } else {
+                boolean insertado = false;
+                for(int i = 0; i < paquetesOrdenados.size(); i++){
+                    if(paquetesOrdenados.get(i).getPeso_kg() < p.getPeso_kg()){
+                        paquetesOrdenados.add(i, p);
+                        insertado = true;
+                        break;
+                    }
+                }
+                if(!insertado){
+                    paquetesOrdenados.add(p);
+                }
+            }
+        }   
+
+        return paquetesOrdenados;
     }
 } 

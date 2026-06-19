@@ -1,9 +1,9 @@
+
 class Camion {
     private int id_camion;
     private String patente;
     private float capacidad_kg;
     private boolean esta_refrigerado;
-    
 
     public Camion(int id_camion, String patente, float capacidad_kg, boolean esta_refrigerado) {
         this.id_camion = id_camion;
@@ -27,6 +27,7 @@ class Camion {
     public boolean isEsta_refrigerado() {
         return esta_refrigerado;
     }
+
 
     public String toString() {
         return "Camion{id_camion=" + id_camion + ", patente='" + patente + "', capacidad_kg=" + capacidad_kg + ", esta_refrigerado=" + esta_refrigerado + "}";
